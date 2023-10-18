@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Oasis.Helpers;
+using Oasis.Models;
 using Oasis.Services;
 using TryJWT.Models;
 
@@ -36,6 +37,5 @@ namespace Oasis.Controllers
                 return BadRequest(result.Message);
             return Ok(result);
         }
-
     }
 }

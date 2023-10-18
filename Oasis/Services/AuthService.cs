@@ -98,7 +98,8 @@ namespace Oasis.Services
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim("uid", user.Id)
+                new Claim("uid", user.Id),
+                new Claim("UserEmail",user.Email)
             }
             .Union(userClaims)
             .Union(roleClaims);

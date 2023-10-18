@@ -5,10 +5,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Net.Http.Headers;
 using Oasis.DTOS;
 using Oasis.Models;
 using Oasis.Services;
+using System.Data.Common;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http.Headers;
+using System.Reflection.Metadata;
 using System.Security.Claims;
 using System.Threading.Tasks;
 
@@ -16,6 +20,7 @@ namespace Oasis.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    //[Authorize]
     public class ToDoController : ControllerBase
     {
         private readonly WorkDbContext _workContext;
@@ -28,12 +33,17 @@ namespace Oasis.Controllers
             _mapper = mapper;
         }
         [HttpPost("Create")]
-        [Authorize]
-        public async Task<IActionResult> Create([FromBody] string title, string token)
+        public async Task<IActionResult> Create([FromBody] string title)
         {
-            if (token != null)
+            var x = "sdas";
+            x.ToLower();
+            var authorization = Request.Headers[HeaderNames.Authorization];
+            if (AuthenticationHeaderValue.TryParse(authorization, out var headerValue))
             {
-                var UserId = await _getUser.GetUserByToken(token);
+                var useremail = User?.FindFirst("UserEmail")?.Value;
+                var parameter = headerValue.Parameter;
+                var UserId = await _getUser.GetUserByToken(parameter);
+                var tasks = _workContext.Works.Where(ww => ww.UserId == UserId);
                 var work = new Work
                 {
                     Title = title,
@@ -42,24 +52,23 @@ namespace Oasis.Controllers
                 await _workContext.Works.AddAsync(work);
                 await _workContext.SaveChangesAsync();
                 return Ok(title + " Created");
-
-                
             }
-            return BadRequest();
+            return BadRequest("You have problem in ....");
         }
         [HttpGet("GetAllTasks")]
-        [Authorize]
-        public async Task<IActionResult> GetAll(string token)
+        public async Task<IActionResult> GetAll()
         {
-            if(token != null) 
+            var authorization = Request.Headers[HeaderNames.Authorization];
+            if (AuthenticationHeaderValue.TryParse(authorization, out var headerValue))
             {
-                var UserId = await _getUser.GetUserByToken(token);
+                var parameter = headerValue.Parameter;
+                var UserId = await _getUser.GetUserByToken(parameter);
                 var tasks = _workContext.Works.Where(ww => ww.UserId == UserId);
                 var mapping = _mapper.Map<IEnumerable<WorkDto>>(tasks);
                 return Ok(mapping);
             }
-            
-            return BadRequest("your token is uncorrect ");
+            return BadRequest("You have problem in ....");
+
         }
         [HttpGet("GetOneTask/{id}")] 
         public async Task<IActionResult> GetOne(int id)
@@ -93,6 +102,28 @@ namespace Oasis.Controllers
                 return Ok("You Completed this task"+ task.Title);
             }
             return BadRequest("You don`t have this task");
+        }
+        [HttpPut("CompleteTaskes")]
+        public async Task<IActionResult> CompleteTask()
+        {
+            var authorization = Request.Headers[HeaderNames.Authorization];
+            if (AuthenticationHeaderValue.TryParse(authorization, out var headerValue))
+            {
+                var parameter = headerValue.Parameter;
+                var UserId = await _getUser.GetUserByToken(parameter);
+                var Tasks = _workContext.Works.Where(ww => ww.UserId == UserId);
+                foreach (var task in Tasks)
+                {
+                    task.Completed = true;
+
+                }
+                _workContext.Works.UpdateRange(Tasks);
+                await _workContext.SaveChangesAsync();
+                var mapping = _mapper.Map<IEnumerable<WorkDto>>(Tasks);
+
+                return Ok(mapping);
+            }
+            return BadRequest("We have some issues");
         }
         [HttpDelete("DeleteTask/{id}")]
         public async Task<IActionResult> DeleteTask(int id)
